@@ -69,7 +69,7 @@ special_events = {
     (6, 8): ["高考", "考的全会，蒙的全对"],
     (6, 9): ["高考", "考的全会，蒙的全对"],
     (11, 1): ["参加 CSP", "祝你 RP++"],
-    (11, 29): ["参加学考\nAAAAA", "参加NOIP\n祝你 RP++"],
+    (11, 29): ["参加学考\nAAAAA", "宜:参加NOIP\n祝你 RP++"],
     (11, 30): ["参加学考", "AAAAA"],
     (12, 6): ["唱歌", "成为歌神"]
 }
@@ -84,6 +84,8 @@ fortune_levels = [
     ("大吉", 1)
 ]
 special_fortune_levels = [
+    ("凶", 3),
+    ("中平", 3),
     ("吉", 2),
     ("小吉", 2),
     ("中吉", 2),
@@ -158,7 +160,7 @@ class FortunePlugin(Star):
             
         if today_str not in self.fortune_data[user_id]["checkin_history"]:
             self.fortune_data[user_id]["checkin_history"].append(today_str)
-            self.fortune_data[user_id]["checkin_history"] = self.fortune_data[user_id]["checkin_history"][-30:]
+            #self.fortune_data[user_id]["checkin_history"] = self.fortune_data[user_id]["checkin_history"][-30:]
 
     def get_user_fortune(self, user_id: str, user_name: str, today: datetime) -> dict:
         today_str = today.strftime("%Y-%m-%d")
