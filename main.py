@@ -94,7 +94,7 @@ special_fortune_levels = [
 
 DATA_FILE = "fortune_data.json"
 
-@register("astrbot_plugin_dailyacmfortune", "Dayanshifu", "洛谷运势生成和签到打卡", "1.0.1", "https://github.com/Dayanshifu/astrbot_plugin_dailyacmfortune")
+@register("astrbot_plugin_dailyacmfortune", "Dayanshifu", "洛谷运势生成和签到打卡", "1.0.2", "https://github.com/Dayanshifu/astrbot_plugin_dailyacmfortune")
 class FortunePlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -112,6 +112,9 @@ class FortunePlugin(Star):
             except Exception as e:
                 logger.error(f"加载运势数据失败: {e}")
                 self.fortune_data = {}
+        # 初始化每日打卡统计字段
+        if "daily_checkin" not in self.fortune_data:
+            self.fortune_data["daily_checkin"] = {}
 
     def save_data(self):
         try:
@@ -160,12 +163,29 @@ class FortunePlugin(Star):
             
         if today_str not in self.fortune_data[user_id]["checkin_history"]:
             self.fortune_data[user_id]["checkin_history"].append(today_str)
-            #self.fortune_data[user_id]["checkin_history"] = self.fortune_data[user_id]["checkin_history"][-30:]
+
+    def get_today_checkin_order(self, user_id: str, today: datetime) -> int:
+        """获取用户今日打卡的序号"""
+        today_str = today.strftime("%Y-%m-%d")
+        daily_checkin = self.fortune_data["daily_checkin"]
+        
+        # 初始化当日打卡列表
+        if today_str not in daily_checkin:
+            daily_checkin[today_str] = []
+        
+        # 如果用户未在当日列表中，添加进去
+        if user_id not in daily_checkin[today_str]:
+            daily_checkin[today_str].append(user_id)
+        
+        # 返回用户的打卡序号（索引+1）
+        return daily_checkin[today_str].index(user_id) + 1
 
     def get_user_fortune(self, user_id: str, user_name: str, today: datetime) -> dict:
         today_str = today.strftime("%Y-%m-%d")
         
         self.update_checkin_history(user_id, today)
+        # 获取今日打卡序号
+        checkin_order = self.get_today_checkin_order(user_id, today)
         
         continuous_days = self.get_continuous_days(user_id, today)
         
@@ -173,6 +193,7 @@ class FortunePlugin(Star):
             user_record = self.fortune_data[user_id]
             if user_record.get("date") == today_str:
                 user_record["continuous_days"] = continuous_days
+                user_record["checkin_order"] = checkin_order  # 更新序号（防止重复打卡时序号变化）
                 return user_record
                 
         fortune_level, special_event = self.generate_fortune(today)
@@ -221,7 +242,8 @@ class FortunePlugin(Star):
             "special_event": special_event[0] if special_event else None,
             "random_events": random_events,
             "user_name": user_name,
-            "continuous_days": continuous_days
+            "continuous_days": continuous_days,
+            "checkin_order": checkin_order  # 存储打卡序号
         }
         
         self.fortune_data[user_id].update(new_fortune)
@@ -251,9 +273,15 @@ class FortunePlugin(Star):
         user_fortune = self.get_user_fortune(user_id, user_name, today)
         
         continuous_days = user_fortune.get("continuous_days", 0)
+        checkin_order = user_fortune.get("checkin_order", 0)  # 获取打卡序号
+        
+        # 构造头部信息
         header = f"{user_name}的运势"
+        checkin_info = f"你今天第{checkin_order}个打卡\n"
         if continuous_days > 0:
-            header = f"你已经连续打卡了{continuous_days}天\n{header}"
+            header = f"{checkin_info}你已经连续打卡了{continuous_days}天\n{header}"
+        else:
+            header = f"{checkin_info}{header}"
             
         yield event.plain_result(f"{header}\n{user_fortune['quote']}")
 
